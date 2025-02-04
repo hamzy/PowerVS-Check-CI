@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // (cd PowerVS-Check-CI/; /bin/rm go.*; go mod init example/user/PowerVS-Check-CI; go mod tidy)
-// (cd PowerVS-Check-CI/; echo "vet:"; go vet || exit 1; echo "build:"; go build *.go || exit 1; echo "run:"; ./PowerVS-Check-CI -apiKey "$(cat /var/run/powervs-ipi-cicd-secrets/powervs-creds/IBMCLOUD_API_KEY)" -resourceGroup "..." -name "..." -shouldDebug true)
+// (cd PowerVS-Check-CI/; echo "vet:"; go vet || exit 1; echo "build:"; go build -ldflags="-X main.version=$(git describe --always --long --dirty) -X main.release=$(git describe --tags --abbrev=0)" *.go || exit 1; echo "run:"; ./PowerVS-Check-CI -apiKey "$(cat /var/run/powervs-ipi-cicd-secrets/powervs-creds/IBMCLOUD_API_KEY)" -resourceGroup "..." -name "..." -shouldDebug true)
 
 package main
 
@@ -34,6 +34,11 @@ import (
 )
 
 var (
+	// Replaced with:
+	//   -ldflags="-X main.version=$(git describe --always --long --dirty)"
+	version        = "undefined"
+	release        = "undefined"
+
 	shouldDebug    = false
 	shouldDelete   = false
 	log            *logrus.Logger
@@ -201,6 +206,7 @@ func main() {
 
 	var (
 		out                 io.Writer
+		ptrVersion          *bool
 		ptrApiKey           *string
 		ptrShouldDebug      *string
 		ptrShouldDelete     *string
@@ -221,6 +227,7 @@ func main() {
 		err                 error
 	)
 
+	ptrVersion = flag.Bool("version", false, "print version information")
 	ptrApiKey = flag.String("apiKey", "", "Your IBM Cloud API key")
 	ptrShouldDebug = flag.String("shouldDebug", "false", "Should output debug output")
 	ptrShouldDelete = flag.String("shouldDelete", "false", "Should delete resources")
@@ -231,6 +238,11 @@ func main() {
 	ptrExclude = flag.String("exclude", "", "The pattern to exclude from matches")
 
 	flag.Parse()
+
+	if *ptrVersion {
+		fmt.Printf("version = %v\nrelease = %v\n", version, release)
+		os.Exit(0)
+	}
 
 	switch strings.ToLower(*ptrShouldDebug) {
 	case "true":
@@ -275,6 +287,7 @@ func main() {
 		log.Printf("WARNING: Not handling %s", *ptrRegion)
 	}
 
+	log.Printf("version = %v\nrelease = %v", version, release)
 	log.Printf("Begin")
 
 	//
